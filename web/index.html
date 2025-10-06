@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 3 - Image Warping and Mosaicing</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+</head>
+<body>
+    <header class="project-header">
+        <div class="container">
+            <a href="../../index.html" class="back-link">Back to Portfolio</a>
+            <h1 class="title">Project 3</h1>
+            <p class="subtitle">Image Warping and Mosaicing</p>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="project-content">
+            <section class="section">
+                <h2>Project Overview</h2>
+                <p>The goal of this assignment is to explore homographies, image warping, and mosaicing. Below are results formatted consistently with previous projects. Captions label sources and outputs; detailed explanations will be added later.</p>
+            </section>
+
+            <section class="section" id="a1">
+                <h2>A.1: Shoot and Digitize Pictures</h2>
+                <p>Scene: Park (first set). Below are the raw inputs that will be used for the final mosaic.</p>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="../code/data/images/park_1.jpeg" alt="Park 1" class="clickable-image">
+                        <div class="image-caption">Park 1 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/park_2.jpeg" alt="Park 2" class="clickable-image">
+                        <div class="image-caption">Park 2 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/park_3.jpeg" alt="Park 3" class="clickable-image">
+                        <div class="image-caption">Park 3 - source</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="a2">
+                <h2>A.2: Recover Homographies</h2>
+                <h3>Point Correspondences</h3>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="../code/final_output/park_2_to_3_points.png" alt="Correspondences: Park 2 ↔ Park 3" class="clickable-image" style="max-width: 700px;">
+                        <div class="image-caption">park_2_to_3_points (scaled for visibility)</div>
+                    </div>
+                </div>
+                <h3>Warped Result</h3>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="../code/final_output/park_2_to_3.jpg" alt="Warped Park 2 → Park 3 Frame" class="clickable-image" style="max-width: 700px;">
+                        <div class="image-caption">park_2_to_3 (projective transform)</div>
+                    </div>
+                </div>
+
+                <h3>Homography Formulation</h3>
+                <div class="math-formula">
+                    $$\mathbf{p}' = \mathbf{H}\,\mathbf{p}, \quad \mathbf{H} = \begin{bmatrix} h_{11}&h_{12}&h_{13} \\ h_{21}&h_{22}&h_{23} \\ h_{31}&h_{32}&1 \end{bmatrix}$$
+                    $$\text{For each correspondence } (x,y) \to (x',y'):\\
+                    \begin{aligned}
+                    x'(h_{31}x + h_{32}y + 1) &= h_{11}x + h_{12}y + h_{13} \\
+                    y'(h_{31}x + h_{32}y + 1) &= h_{21}x + h_{22}y + h_{23}
+                    \end{aligned}$$
+                    $$\Rightarrow \mathbf{A}\,\mathbf{h} = \mathbf{b} \text{ (stack rows per point), solve in least-squares for } \mathbf{h} = [h_{11},h_{12},h_{13},h_{21},h_{22},h_{23},h_{31},h_{32}]^\top$$
+                </div>
+            </section>
+
+            <section class="section" id="a3">
+                <h2>A.3: Warp the Images (Rectification and Interpolation)</h2>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="../code/final_output/skull_points.png" alt="Point Correspondances" class="clickable-image" style="max-width: 420px;">
+                        <div class="image-caption">Point Correspondances</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/final_output/skull_nearest_rectified.jpg" alt="Rectified Image (Nearest Neighbor Interpolation)" class="clickable-image" style="max-width: 420px;">
+                        <div class="image-caption">Rectified Image (Nearest Neighbor Interpolation)</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/final_output/skull_bilinear_rectified.jpg" alt="Rectified Image (Bilinear Interpolation)" class="clickable-image" style="max-width: 420px;">
+                        <div class="image-caption">Rectified Image (Bilinear Interpolation)</div>
+                    </div>
+                </div>
+
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="../code/final_output/albums_points.png" alt="Point Correspondances" class="clickable-image" style="max-width: 420px;">
+                        <div class="image-caption">Point Correspondances</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/final_output/albums_bilinear_rectified.jpg" alt="Rectified Image (Bilinear Interpolation)" class="clickable-image" style="max-width: 420px;">
+                        <div class="image-caption">Rectified Image (Bilinear Interpolation)</div>
+                    </div>
+                </div>
+
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="../code/final_output/oraple_points.png" alt="Point Correspondances" class="clickable-image" style="max-width: 420px;">
+                        <div class="image-caption">Point Correspondances</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/final_output/oraple_rectified.jpg" alt="Rectified Image (Bilinear Interpolation)" class="clickable-image" style="max-width: 420px;">
+                        <div class="image-caption">Rectified Image (Bilinear Interpolation)</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="a4">
+                <h2>A.4: Blend Images into a Mosaic</h2>
+                <h3>Park Mosaic</h3>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="../code/data/images/park_1.jpeg" alt="Park 1 Source" class="clickable-image">
+                        <div class="image-caption">Source: park_1</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/park_2.jpeg" alt="Park 2 Source" class="clickable-image">
+                        <div class="image-caption">Source: park_2</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/park_3.jpeg" alt="Park 3 Source" class="clickable-image">
+                        <div class="image-caption">Source: park_3</div>
+                    </div>
+                </div>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="../code/final_output/park_mosaic.jpg" alt="Final Park Mosaic" class="clickable-image" style="max-width: 900px;">
+                        <div class="image-caption">park_mosaic (weighted blending)</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 CS180 Portfolio - Project 3</p>
+        </div>
+    </footer>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal">
+        <span class="close">&times;</span>
+        <img class="modal-content" id="modalImage">
+        <div id="modalCaption" class="modal-caption"></div>
+    </div>
+
+    <script>
+        var modal = document.getElementById("imageModal");
+        var modalImg = document.getElementById("modalImage");
+        var captionText = document.getElementById("modalCaption");
+        var span = document.getElementsByClassName("close")[0];
+
+        document.addEventListener('click', function(event) {
+            if (event.target.tagName === 'IMG' && event.target.classList.contains('clickable-image')) {
+                modal.style.display = "block";
+                modalImg.src = event.target.src;
+                captionText.innerHTML = event.target.alt;
+            }
+        });
+
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        modal.onclick = function(event) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                modal.style.display = "none";
+            }
+        });
+    </script>
+</body>
+</html>
+
+

@@ -1,0 +1,48 @@
+/* Reuse Project 2 styles for consistency */
+@import url("../../2/web/styles.css");
+
+/* Project 3 specific tweaks (if any) */
+.title {
+    letter-spacing: -0.02em;
+}
+
+.project-header {
+    margin-bottom: var(--spacing-lg);
+}
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+    margin: var(--spacing-lg) 0;
+}
+
+.comparison-item {
+    text-align: center;
+}
+
+.comparison-item img {
+    width: 100%;
+    max-width: 350px;
+    height: auto;
+    box-shadow: var(--shadow-sm);
+}
+
+.image-row {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.image-row .image-container img {
+    max-width: 320px;
+}
+
+/* Utility: prevent wrap for single-line rows */
+.no-wrap {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+}
+
+
