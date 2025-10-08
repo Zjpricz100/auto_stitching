@@ -212,6 +212,7 @@ def rectify_img(im_name, out_path=""):
 
 def warp_img(source_img, reference_img, source_points, reference_points, out_path=""):
     H = compute_homography(source_points, reference_points)
+    print(H)
     warped_source = warp_image_bilinear(source_img, reference_img, H)
     ut.write_output(warped_source, f"{out_path}.jpeg")
 
@@ -410,11 +411,11 @@ berkeley_points = [berkeley_3_to_4_points, berkeley_5_to_4_points]
 
 #create_multiple_img_mosaic(park_images, park_points, center_idx=1, out_path="park_multiple")
 #create_multiple_img_mosaic(stairs_images, stairs_points, center_idx=1, out_path="stairs")
-create_multiple_img_mosaic(berkeley_images, berkeley_points, center_idx=1, out_path="berkeley")
+#create_multiple_img_mosaic(berkeley_images, berkeley_points, center_idx=1, out_path="berkeley")
 
 
 
-#warp_img(park_2_img, park_3_img, park_2_to_3_points[0], park_2_to_3_points[1], out_path="park_2_to_3.jpeg")
+warp_img(park_2_img, park_3_img, park_2_to_3_points[0], park_2_to_3_points[1], out_path="park_2_to_3.jpeg")
 
 #rectify_img("skull", out_path="nearest")
 
