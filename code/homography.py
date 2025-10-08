@@ -377,22 +377,46 @@ def create_img_mosaic(left_img, right_img, left_points, right_points, out_path="
 park_1_img = ut.read_in_image("data/images/park_1.jpeg")
 park_2_img = ut.read_in_image("data/images/park_2.jpeg")
 park_3_img = ut.read_in_image("data/images/park_3.jpeg")
-park_images = [park_1_img, park_2_img, park_3_img]
-
+park_4_img = ut.read_in_image("data/images/park_4.jpeg")
+park_images = [park_1_img, park_2_img, park_3_img, park_4_img]
 park_1_to_2_points = get_img_correspondances("park_1_to_2.npz", n_correspondances=20)
 park_2_to_3_points = get_img_correspondances("park_2_to_3.npz", n_correspondances=20)
-park_points = [park_1_to_2_points, park_2_to_3_points]
+park_4_to_2_points = get_img_correspondances("park_4_to_2.npz", n_correspondances=20)
+park_points = [park_1_to_2_points, (park_2_to_3_points[1], park_2_to_3_points[0]), park_4_to_2_points]
+
+stairs_1_img = ut.read_in_image("data/images/stairs_1.jpeg")
+stairs_2_img = ut.read_in_image("data/images/stairs_2.jpeg")
+stairs_3_img = ut.read_in_image("data/images/stairs_3.jpeg")
+stairs_images = [stairs_1_img, stairs_2_img, stairs_3_img]
+stairs_1_to_2_points = get_img_correspondances("stairs_1_to_2.npz", n_correspondances=20)
+stairs_3_to_2_points = get_img_correspondances("stairs_3_to_2.npz", n_correspondances=20)
+stairs_points = [stairs_1_to_2_points, stairs_3_to_2_points]
+
+berkeley_3_img = ut.read_in_image("data/images/berkeley_3.jpeg")
+berkeley_4_img = ut.read_in_image("data/images/berkeley_4.jpeg")
+berkeley_5_img = ut.read_in_image("data/images/berkeley_5.jpeg")
+berkeley_images = [berkeley_3_img, berkeley_4_img, berkeley_5_img]
+
+berkeley_3_to_4_points = get_img_correspondances("berkeley_3_to_4.npz", n_correspondances=20)
+berkeley_5_to_4_points = get_img_correspondances("berkeley_5_to_4.npz", n_correspondances=20)
+berkeley_points = [berkeley_3_to_4_points, berkeley_5_to_4_points]
+
+
 
 
 #park_mosaic = create_moasaic(park_images, park_points, "park")
 
 #create_img_mosaic(park_1_img, park_2_img, park_1_to_2_points[0], park_1_to_2_points[1])
 
-#create_multiple_img_mosaic([park_1_img, park_2_img, park_3_img], [park_1_to_2_points, (park_2_to_3_points[1], park_2_to_3_points[0])], center_idx=1, out_path="park")
+#create_multiple_img_mosaic(park_images, park_points, center_idx=1, out_path="park_multiple")
+#create_multiple_img_mosaic(stairs_images, stairs_points, center_idx=1, out_path="stairs")
+create_multiple_img_mosaic(berkeley_images, berkeley_points, center_idx=1, out_path="berkeley")
+
+
 
 #warp_img(park_2_img, park_3_img, park_2_to_3_points[0], park_2_to_3_points[1], out_path="park_2_to_3.jpeg")
 
-rectify_img("skull", out_path="nearest")
+#rectify_img("skull", out_path="nearest")
 
 
 

@@ -34,7 +34,9 @@
 
             <section class="section" id="a1">
                 <h2>A.1: Shoot and Digitize Pictures</h2>
-                <p>Scene: Park (first set). Below are the raw inputs that will be used for the final mosaic.</p>
+                <p>Below are the raw inputs that will be used for the final mosaics.</p>
+                
+                <h3>Park Set</h3>
                 <div class="image-row no-wrap">
                     <div class="image-container">
                         <img src="../code/data/images/park_1.jpeg" alt="Park 1" class="clickable-image">
@@ -47,6 +49,38 @@
                     <div class="image-container">
                         <img src="../code/data/images/park_3.jpeg" alt="Park 3" class="clickable-image">
                         <div class="image-caption">Park 3 - source</div>
+                    </div>
+                </div>
+
+                <h3>Stairs Set</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="../code/data/images/stairs_1.jpeg" alt="Stairs 1" class="clickable-image">
+                        <div class="image-caption">Stairs 1 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/stairs_2.jpeg" alt="Stairs 2" class="clickable-image">
+                        <div class="image-caption">Stairs 2 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/stairs_3.jpeg" alt="Stairs 3" class="clickable-image">
+                        <div class="image-caption">Stairs 3 - source</div>
+                    </div>
+                </div>
+
+                <h3>Berkeley Set</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="../code/data/images/berkeley_3.jpeg" alt="Berkeley 1" class="clickable-image">
+                        <div class="image-caption">Berkeley 1 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/berkeley_4.jpeg" alt="Berkeley 2" class="clickable-image">
+                        <div class="image-caption">Berkeley 2 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/berkeley_5.jpeg" alt="Berkeley 3" class="clickable-image">
+                        <div class="image-caption">Berkeley 3 - source</div>
                     </div>
                 </div>
             </section>
@@ -97,24 +131,24 @@
                     </div>
                 </div>
 
-                <div class="image-row">
+                <div class="rectification-row">
                     <div class="image-container">
-                        <img src="../code/final_output/albums_points.png" alt="Point Correspondances" class="clickable-image" style="max-width: 420px;">
+                        <img src="../code/final_output/albums_points.png" alt="Point Correspondances" class="clickable-image correspondence-img">
                         <div class="image-caption">Point Correspondances</div>
                     </div>
                     <div class="image-container">
-                        <img src="../code/final_output/albums_bilinear_rectified.jpg" alt="Rectified Image (Bilinear Interpolation)" class="clickable-image" style="max-width: 420px;">
+                        <img src="../code/final_output/albums_bilinear_rectified.jpg" alt="Rectified Image (Bilinear Interpolation)" class="clickable-image">
                         <div class="image-caption">Rectified Image (Bilinear Interpolation)</div>
                     </div>
                 </div>
 
-                <div class="image-row">
+                <div class="rectification-row">
                     <div class="image-container">
-                        <img src="../code/final_output/oraple_points.png" alt="Point Correspondances" class="clickable-image" style="max-width: 420px;">
+                        <img src="../code/final_output/oraple_points.png" alt="Point Correspondances" class="clickable-image correspondence-img">
                         <div class="image-caption">Point Correspondances</div>
                     </div>
                     <div class="image-container">
-                        <img src="../code/final_output/oraple_rectified.jpg" alt="Rectified Image (Bilinear Interpolation)" class="clickable-image" style="max-width: 420px;">
+                        <img src="../code/final_output/oraple_rectified.jpg" alt="Rectified Image (Bilinear Interpolation)" class="clickable-image">
                         <div class="image-caption">Rectified Image (Bilinear Interpolation)</div>
                     </div>
                 </div>
@@ -122,8 +156,24 @@
 
             <section class="section" id="a4">
                 <h2>A.4: Blend Images into a Mosaic</h2>
-                <h3>Park Mosaic</h3>
+                
+                <h3>Blending Masks</h3>
+                <p>Below are the masks used for weighted averaging to reduce edge artifacts in the final mosaics. These were generaetd with scipy.ndimage.distance_transform_edt and allow us to blend
+                    smooth gradients between the images for one final result. Here we can visualize the first source image blended with the center reference image for the park set.
+                </p>
                 <div class="image-row">
+                    <div class="image-container">
+                        <img src="../code/final_output/masks/park_source_mask_blended.png" alt="Park Source Mask Blended" class="clickable-image">
+                        <div class="image-caption">park_source_mask_blended</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/final_output/masks/park_reference_mask_blended.png" alt="Park Reference Mask Blended" class="clickable-image">
+                        <div class="image-caption">park_reference_mask_blended</div>
+                    </div>
+                </div>
+
+                <h3>Park Mosaic</h3>
+                <div class="image-row no-wrap">
                     <div class="image-container">
                         <img src="../code/data/images/park_1.jpeg" alt="Park 1 Source" class="clickable-image">
                         <div class="image-caption">Source: park_1</div>
@@ -141,6 +191,50 @@
                     <div class="image-container">
                         <img src="../code/final_output/park_mosaic.jpg" alt="Final Park Mosaic" class="clickable-image" style="max-width: 900px;">
                         <div class="image-caption">park_mosaic (weighted blending)</div>
+                    </div>
+                </div>
+
+                <h3>Stairs Mosaic</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="../code/data/images/stairs_1.jpeg" alt="Stairs 1 Source" class="clickable-image">
+                        <div class="image-caption">Source: stairs_1</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/stairs_2.jpeg" alt="Stairs 2 Source" class="clickable-image">
+                        <div class="image-caption">Source: stairs_2</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/stairs_3.jpeg" alt="Stairs 3 Source" class="clickable-image">
+                        <div class="image-caption">Source: stairs_3</div>
+                    </div>
+                </div>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="../code/final_output/stairs_mosaic.jpg" alt="Final Stairs Mosaic" class="clickable-image" style="max-width: 900px;">
+                        <div class="image-caption">stairs_mosaic (weighted blending)</div>
+                    </div>
+                </div>
+
+                <h3>Berkeley Mosaic</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="../code/data/images/berkeley_3.jpeg" alt="Berkeley 1 Source" class="clickable-image">
+                        <div class="image-caption">Source: berkeley_1</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/berkeley_4.jpeg" alt="Berkeley 2 Source" class="clickable-image">
+                        <div class="image-caption">Source: berkeley_2</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="../code/data/images/berkeley_5.jpeg" alt="Berkeley 3 Source" class="clickable-image">
+                        <div class="image-caption">Source: berkeley_3</div>
+                    </div>
+                </div>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="../code/final_output/berkeley_mosaic.jpg" alt="Final Berkeley Mosaic" class="clickable-image" style="max-width: 900px;">
+                        <div class="image-caption">berkeley_mosaic (weighted blending)</div>
                     </div>
                 </div>
             </section>

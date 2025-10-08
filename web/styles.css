@@ -45,4 +45,29 @@
     overflow-x: auto;
 }
 
+/* Rectification image styling for consistent heights */
+.rectification-row {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.rectification-row .image-container {
+    flex: 1;
+    max-width: 420px;
+}
+
+.rectification-row .image-container img {
+    width: 100%;
+    max-width: 420px;
+}
+
+/* Only crop correspondence images to match rectified height */
+.rectification-row .correspondence-img {
+    height: 400px;
+    object-fit: cover;
+    object-position: top;
+}
+
 
