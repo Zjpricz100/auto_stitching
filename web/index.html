@@ -101,6 +101,15 @@
                         <div class="image-caption">park_2_to_3 (projective transform)</div>
                     </div>
                 </div>
+                
+                <h3>Recovered Homography Matrix</h3>
+                <div class="math-formula">
+                    $$\mathbf{H} = \begin{bmatrix} 
+                    1.40 & -0.0436 & -1310 \\
+                    0.188 & 1.21 & -438 \\
+                    1.05 \times 10^{-4} & -7.63 \times 10^{-6} & 1.00
+                    \end{bmatrix}$$
+                </div>
 
                 <h3>Homography Formulation</h3>
                 <div class="math-formula">
@@ -130,6 +139,9 @@
                         <div class="image-caption">Rectified Image (Bilinear Interpolation)</div>
                     </div>
                 </div>
+
+                <h3>Interpolation Tradeoffs</h3>
+                <p><strong>Tradeoffs and Comparisons:</strong> Both images appear very similarly across both interpolation methods, however bilinear interpolation is more computationally expesnive resulting in the time it took to generate the image being longer than the nearest neighbor interpolation.</p>
 
                 <div class="rectification-row">
                     <div class="image-container">
