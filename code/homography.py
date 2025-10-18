@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import math
 
 from scipy.ndimage import distance_transform_edt
+from harris import *
+import random
+from skimage.color import rgb2gray
 
 
 def get_img_correspondances(correspondance_path, n_correspondances):
@@ -157,7 +160,7 @@ def warp_image_bilinear(source_img, reference_img, H, rectify=False, output_img=
     return output_img
 
 # RECTIFICATION
-
+ 
 # Returns TL, TR, BL, BR
 
 def compute_warped_corners(img_points, H):
@@ -271,7 +274,34 @@ def stitch_images(source_img, reference_img, source_points, reference_points):
 
     return blended_img
 
-def create_multiple_img_mosaic(images, points, center_idx, out_path):
+def ransac_correspondances(source_points, reference_points, n_ransac=100, epsilon=10):
+    N_points = source_points.shape[0]
+    best_inlier_amt = 0
+    best_source_inliers = None
+    best_reference_inliers = None
+    for _ in range(n_ransac):
+        random_row_indices = np.random.choice(N_points, 4, replace=False)
+        source_candidates = source_points[random_row_indices]
+        reference_candidates = reference_points[random_row_indices]
+
+
+        H_candidate = compute_homography(source_candidates, reference_candidates)
+        projected_candidates = compute_warped_corners(source_points, H_candidate)
+        distances = np.linalg.norm(projected_candidates - reference_points, axis=1)
+
+
+        inlier_mask = distances < epsilon
+        inlier_amt = np.sum(inlier_mask)
+        if inlier_amt > best_inlier_amt:
+            best_inlier_amt = inlier_amt
+            best_source_inliers = source_points[inlier_mask]
+            best_reference_inliers = reference_points[inlier_mask]
+
+    return (best_source_inliers, best_reference_inliers)
+
+
+
+def create_multiple_img_mosaic(images, points, center_idx, out_path, ransac=True, n_ransac=100, epsilon=5):
 
 
     print("Computing Homographies and Final Bounding Box...")
@@ -289,6 +319,12 @@ def create_multiple_img_mosaic(images, points, center_idx, out_path):
             all_corners.append(corners)
         else:
             correspondances = points[points_idx]
+
+            if ransac:
+                print("Removing outlier correspondances with RANSAC...")
+                correspondances = ransac_correspondances(correspondances[0], correspondances[1], n_ransac=n_ransac, epsilon=epsilon)
+                print("CORRESPONDANCE AMT: ", correspondances[0].shape[0])
+
             H = compute_homography(correspondances[0], correspondances[1])
             warped_corners = compute_warped_corners(corners, H)
             all_corners.append(warped_corners)
@@ -339,20 +375,6 @@ def create_multiple_img_mosaic(images, points, center_idx, out_path):
 
 
 
-
-
-
-
-    # for idx, image in enumerate(images):
-
-
-    #     reference_mask[-min_y : ref_H - min_y, -min_x : ref_W - min_x, :] = 1.0
-    #     output_img[-min_y : ref_H - min_y, -min_x : ref_W - min_x, :] = reference_img
-
-
-
-
-
 def create_moasaic(images, points, out_path=""):
     assert len(images) >= 2
     assert len(points) == len(images) - 1
@@ -371,53 +393,118 @@ def create_img_mosaic(left_img, right_img, left_points, right_points, out_path="
     blended_img = stitch_images(left_img, right_img, left_points, right_points)
     ut.write_output(blended_img, f"{out_path}_mosaic.jpeg")
 
+def get_automatic_correspondances(images, center_idx, threshold=0.7, n_ip=500):
+    reference_img = images[center_idx]
+    points = [] # list of tuples
 
 
-#rectify_img("skull")
+    for idx, img in enumerate(images):
+        if idx != center_idx:
 
-park_1_img = ut.read_in_image("data/images/park_1.jpeg")
-park_2_img = ut.read_in_image("data/images/park_2.jpeg")
-park_3_img = ut.read_in_image("data/images/park_3.jpeg")
-park_4_img = ut.read_in_image("data/images/park_4.jpeg")
-park_images = [park_1_img, park_2_img, park_3_img, park_4_img]
-park_1_to_2_points = get_img_correspondances("park_1_to_2.npz", n_correspondances=20)
-park_2_to_3_points = get_img_correspondances("park_2_to_3.npz", n_correspondances=20)
-park_4_to_2_points = get_img_correspondances("park_4_to_2.npz", n_correspondances=20)
-park_points = [park_1_to_2_points, (park_2_to_3_points[1], park_2_to_3_points[0]), park_4_to_2_points]
+            h1, coords1 = get_harris_corners(img, min_distance=15)
+            h2, coords2 = get_harris_corners(reference_img, min_distance=15)
+            coords1 = anms_suspress(h1, coords1, n_ip=n_ip)
+            coords2 = anms_suspress(h2, coords2, n_ip=n_ip)
 
-stairs_1_img = ut.read_in_image("data/images/stairs_1.jpeg")
-stairs_2_img = ut.read_in_image("data/images/stairs_2.jpeg")
-stairs_3_img = ut.read_in_image("data/images/stairs_3.jpeg")
-stairs_images = [stairs_1_img, stairs_2_img, stairs_3_img]
-stairs_1_to_2_points = get_img_correspondances("stairs_1_to_2.npz", n_correspondances=20)
-stairs_3_to_2_points = get_img_correspondances("stairs_3_to_2.npz", n_correspondances=20)
-stairs_points = [stairs_1_to_2_points, stairs_3_to_2_points]
+            matches = feature_match(img, reference_img, coords1, coords2, threshold=threshold, n_ip=n_ip)
 
-berkeley_3_img = ut.read_in_image("data/images/berkeley_3.jpeg")
-berkeley_4_img = ut.read_in_image("data/images/berkeley_4.jpeg")
-berkeley_5_img = ut.read_in_image("data/images/berkeley_5.jpeg")
-berkeley_images = [berkeley_3_img, berkeley_4_img, berkeley_5_img]
+            source_points = []
+            reference_points = []
+            for queryIdx, trainIdx in matches:
+                pt1 = (int(coords1[queryIdx][1]), int(coords1[queryIdx][0]))
+                pt2 = (int(coords2[trainIdx][1]), int(coords2[trainIdx][0]))
+                source_points.append(pt1)
+                reference_points.append(pt2)
+            
+            source_points = np.array(source_points)
+            reference_points = np.array(reference_points)
+            points.append((source_points, reference_points))
 
-berkeley_3_to_4_points = get_img_correspondances("berkeley_3_to_4.npz", n_correspondances=20)
-berkeley_5_to_4_points = get_img_correspondances("berkeley_5_to_4.npz", n_correspondances=20)
-berkeley_points = [berkeley_3_to_4_points, berkeley_5_to_4_points]
+    return points
 
-
+def test_recover_homography():
+    park_points = get_img_correspondances("park_2_to_3.npz", n_correspondances=20)
+    H = compute_homography(park_points[0], park_points[1])
+    print(H)
 
 
-#park_mosaic = create_moasaic(park_images, park_points, "park")
+def test_rectification():
+    rectify_img("skull")
+    rectify_img("albums")
 
-#create_img_mosaic(park_1_img, park_2_img, park_1_to_2_points[0], park_1_to_2_points[1])
+def test_manual_mosaic():
+    park_1_img = ut.read_in_image("data/images/park_1.jpeg")
+    park_2_img = ut.read_in_image("data/images/park_2.jpeg")
+    park_3_img = ut.read_in_image("data/images/park_3.jpeg")
+    park_images = [park_1_img, park_2_img, park_3_img]
+    park_1_to_2_points = get_img_correspondances("park_1_to_2.npz", n_correspondances=20)
+    park_2_to_3_points = get_img_correspondances("park_2_to_3.npz", n_correspondances=20)
+    park_4_to_2_points = get_img_correspondances("park_4_to_2.npz", n_correspondances=20)
+    park_points = [park_1_to_2_points, (park_2_to_3_points[1], park_2_to_3_points[0]), park_4_to_2_points]
 
-#create_multiple_img_mosaic(park_images, park_points, center_idx=1, out_path="park_multiple")
-#create_multiple_img_mosaic(stairs_images, stairs_points, center_idx=1, out_path="stairs")
-#create_multiple_img_mosaic(berkeley_images, berkeley_points, center_idx=1, out_path="berkeley")
+    stairs_1_img = ut.read_in_image("data/images/stairs_1.jpeg")
+    stairs_2_img = ut.read_in_image("data/images/stairs_2.jpeg")
+    stairs_3_img = ut.read_in_image("data/images/stairs_3.jpeg")
+    stairs_images = [stairs_1_img, stairs_2_img, stairs_3_img]
+    stairs_1_to_2_points = get_img_correspondances("stairs_1_to_2.npz", n_correspondances=20)
+    stairs_3_to_2_points = get_img_correspondances("stairs_3_to_2.npz", n_correspondances=20)
+    stairs_points = [stairs_1_to_2_points, stairs_3_to_2_points]
+
+    berkeley_3_img = ut.read_in_image("data/images/berkeley_3.jpeg")
+    berkeley_4_img = ut.read_in_image("data/images/berkeley_4.jpeg")
+    berkeley_5_img = ut.read_in_image("data/images/berkeley_5.jpeg")
+    berkeley_3_to_4_points = get_img_correspondances("berkeley_3_to_4.npz", n_correspondances=20)
+    berkeley_5_to_4_points = get_img_correspondances("berkeley_5_to_4.npz", n_correspondances=20)
+    berkeley_points = [berkeley_3_to_4_points, berkeley_5_to_4_points]
+    berkeley_images = [berkeley_3_img, berkeley_4_img, berkeley_5_img]
 
 
 
-warp_img(park_2_img, park_3_img, park_2_to_3_points[0], park_2_to_3_points[1], out_path="park_2_to_3.jpeg")
+    create_multiple_img_mosaic(park_images, park_points, center_idx=1, out_path="park_manual", n_ransac=1000, ransac=False)
+    create_multiple_img_mosaic(stairs_images, stairs_points, center_idx=1, out_path="stairs_manual", n_ransac=1000, ransac=False)
+    create_multiple_img_mosaic(berkeley_images, berkeley_points, center_idx=1, out_path="berkeley_manual", n_ransac=1000, ransac=False)
 
-#rectify_img("skull", out_path="nearest")
+
+
+
+
+
+
+def test_ransac_mosaic():
+    park_img_1 = ut.read_in_image("data/images/park_1.jpeg")
+    park_img_2 = ut.read_in_image("data/images/park_2.jpeg")
+    park_img_3 = ut.read_in_image("data/images/park_3.jpeg")
+    park_images = [park_img_1, park_img_2, park_img_3]
+    park_points = get_automatic_correspondances(park_images, center_idx=1, threshold=0.7, n_ip=500)
+
+    berkeley_img_1 = ut.read_in_image("data/images/berkeley_3.jpeg")
+    berkeley_img_2 = ut.read_in_image("data/images/berkeley_4.jpeg")
+    berkeley_img_3 = ut.read_in_image("data/images/berkeley_5.jpeg")
+    berkeley_images = [berkeley_img_1, berkeley_img_2, berkeley_img_3]
+    berkeley_points = get_automatic_correspondances(berkeley_images, center_idx=1, threshold=0.7, n_ip=500)
+    
+    stairs_img_1 = ut.read_in_image("data/images/stairs_1.jpeg")
+    stairs_img_2 = ut.read_in_image("data/images/stairs_2.jpeg")
+    stairs_img_3 = ut.read_in_image("data/images/stairs_3.jpeg")
+    stairs_images = [stairs_img_1, stairs_img_2, stairs_img_3]
+    stairs_points = get_automatic_correspondances(stairs_images, center_idx=1, threshold=0.7, n_ip=500)
+    
+    create_multiple_img_mosaic(park_images, park_points, center_idx=1, out_path="park_automatic_ransac", n_ransac=3000, epsilon=3)
+    create_multiple_img_mosaic(berkeley_images, berkeley_points, center_idx=1, out_path="berkeley_automatic_ransac", n_ransac=3000, epsilon=3)
+    create_multiple_img_mosaic(stairs_images, stairs_points, center_idx=1, out_path="stairs_automatic_ransac", n_ransac=3000, epsilon=3)
+
+
+if __name__ == "__main__":
+    test_recover_homography()
+    test_rectification()
+    test_manual_mosaic()
+    test_ransac_mosaic()
+
+
+
+
+
+
 
 
 
