@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 3 - [Auto]Stitching Photo Mosaics</title>
+    <link rel="stylesheet" href="web/styles.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+</head>
+<body>
+    <header class="project-header">
+        <div class="container">
+            <h1 class="title">Project 3</h1>
+            <p class="subtitle">[Auto]Stitching Photo Mosaics</p>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="project-content">
+            <div class="image-row">
+                <div class="image-container">
+                    <img src="code/final_output/park_automatic_ransac_mosaic.jpg" alt="Automatic Park Mosaic" class="clickable-image" style="max-width: 1000px;">
+                    <div class="image-caption"></div>
+                </div>
+            </div>
+
+            <section class="section">
+                <h2>Project Overview</h2>
+                <p>The goal of this assignment is to explore homographies, image warping, and mosaicing. This project demonstrates both manual and automatic approaches to creating panoramic mosaics, with automatic stitching using Harris corner detection, feature matching, and RANSAC for robust homography estimation.</p>
+            </section>
+
+            <section class="section" id="a1">
+                <h2>Shoot and Digitize Pictures</h2>
+                <p>We start by shooting and digitizing pictures of the various scenes we will be using for the final mosaics. The 3 sets I chose was a lovely park by my house, some stairs nearby a building at Berkeley, and the exterior of a building towards the center of campus.
+                </p>
+        <p>It is critical to take pictures that can be related to eachother via homography. To do this, we need to ensure rays from one picture to the next are captured. This can be enforced by rotating the camera slightly between pictures and never translating the camera's center of projection.</p>
+
+                
+                
+                <h3>Park Set</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/data/images/park_1.jpeg" alt="Park 1" class="clickable-image">
+                        <div class="image-caption">Park 1 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/park_2.jpeg" alt="Park 2" class="clickable-image">
+                        <div class="image-caption">Park 2 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/park_3.jpeg" alt="Park 3" class="clickable-image">
+                        <div class="image-caption">Park 3 - source</div>
+                    </div>
+                </div>
+
+                <h3>Stairs Set</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/data/images/stairs_1.jpeg" alt="Stairs 1" class="clickable-image">
+                        <div class="image-caption">Stairs 1 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/stairs_2.jpeg" alt="Stairs 2" class="clickable-image">
+                        <div class="image-caption">Stairs 2 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/stairs_3.jpeg" alt="Stairs 3" class="clickable-image">
+                        <div class="image-caption">Stairs 3 - source</div>
+                    </div>
+                </div>
+
+                <h3>Berkeley Set</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/data/images/berkeley_3.jpeg" alt="Berkeley 1" class="clickable-image">
+                        <div class="image-caption">Berkeley 1 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/berkeley_4.jpeg" alt="Berkeley 2" class="clickable-image">
+                        <div class="image-caption">Berkeley 2 - source</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/berkeley_5.jpeg" alt="Berkeley 3" class="clickable-image">
+                        <div class="image-caption">Berkeley 3 - source</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="a2">
+                <h2>Recover Homographies</h2>
+                <p>Now that we have our images, we need to recover the homography transformations between them. We can do this by finding point correspondences between the images (at first manually) and then using the homography matrix to warp the images to a common coordinate system.
+                <p>Consider the projective transform relating the second and third picture of the park scene. By manually saving the correspondances between the two images, we can solve an overdetermined system of linear equations to recover the homography matrix. We can see the correspondances visualized below.</p>
+                </p>
+                <h3>Point Correspondences</h3>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="code/final_output/park_2_to_3_points.png" alt="Correspondences: Park 2 ↔ Park 3" class="clickable-image" style="max-width: 700px;">
+                        <div class="image-caption">park_2_to_3_points (scaled for visibility)</div>
+                    </div>
+                </div>
+
+                <h3>Mathematical Foundations</h3>
+                <p>Now lets figure out how to mathematically transform our images via a homography so we can use them to create mosaics. A homography is a projective transformation that maps points from one plane to another. For image mosaicing, we need to find the homography matrix that relates corresponding points between two images.</p>
+
+                <div class="highlight" style="background-color: #d4edda; border-left: 4px solid #28a745; padding: 1rem; margin: 1rem 0;">
+                    <h5 style="color: #155724; margin-top: 0;">Homography Formulation</h5>
+                    <p style="color: #155724; margin-bottom: 0.5rem;">For each correspondence $(x,y) \to (u,v)$, the projective transformation gives:</p>
+                    <div class="math-formula" style="margin: 0.5rem 0;">
+                        $$\mathbf{p}' = \mathbf{H}\,\mathbf{p}, \quad \mathbf{H} = \begin{bmatrix} h_{11}&h_{12}&h_{13} \\ h_{21}&h_{22}&h_{23} \\ h_{31}&h_{32}&1 \end{bmatrix}$$
+                    </div>
+                    <p style="color: #155724; margin-bottom: 0.5rem;">Expanding to linear form and rearranging:</p>
+                    <div class="math-formula" style="margin: 0.5rem 0;">
+                        $$\begin{aligned}
+                        h_{11}x + h_{12}y + h_{13} - h_{31}ux - h_{32}uy &= u \\
+                        h_{21}x + h_{22}y + h_{23} - h_{31}vx - h_{32}vy &= v
+                        \end{aligned}$$
+                    </div>
+                    <p style="color: #155724; margin-bottom: 0.5rem;">This forms the linear system $\mathbf{D}\mathbf{h} = \mathbf{b}$ where:</p>
+                    <div class="math-formula" style="margin: 0.5rem 0;">
+                        $$\mathbf{D} = \begin{bmatrix}
+                        x & y & 1 & 0 & 0 & 0 & -ux & -uy \\
+                        0 & 0 & 0 & x & y & 1 & -vx & -vy
+                        \end{bmatrix}, \quad \mathbf{h} = \begin{bmatrix} h_{11} \\ h_{12} \\ h_{13} \\ h_{21} \\ h_{22} \\ h_{23} \\ h_{31} \\ h_{32} \end{bmatrix}, \quad \mathbf{b} = \begin{bmatrix} u \\ v \end{bmatrix}$$
+                    </div>
+                    <p style="color: #155724; margin-bottom: 0;">With $n$ correspondences, we stack $2n$ equations and solve using least squares to find the 8 unknown homography parameters.</p>
+                </div>
+
+                <h3>Warped Result</h3>
+                <p>We can now visualize the projective transform between the second and third picture of the park scene. This transform can be applied to any points from the second image using the recovered homography matrix. This gives us a good foundation to start stitching together image mosaics.</p>
+
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/final_output/park_2_to_3.jpg" alt="Warped Park 2 → Park 3 Frame" class="clickable-image" style="max-width: 500px;">
+                        <div class="image-caption">park_2_to_3 (projective transform)</div>
+                    </div>
+                    <div class="image-container">
+                        <div class="math-formula" style="margin: 0;">
+                            $$\mathbf{H} = \begin{bmatrix} 
+                            1.40 & -0.0436 & -1310 \\
+                            0.188 & 1.21 & -438 \\
+                            1.05 \times 10^{-4} & -7.63 \times 10^{-6} & 1.00
+                            \end{bmatrix}$$
+                        </div>
+                        <div class="image-caption">Recovered Homography Matrix</div>
+                    </div>
+                </div>
+
+            </section>
+
+            <section class="section" id="a3">
+                <h2>Warp the Images (Rectification and Interpolation)</h2>
+                <p>We have figured out how to mathematically recover homography matrices. We can now apply those matrices to images.</p>
+
+                <div class="highlight" style="background-color: #d4edda; border-left: 4px solid #28a745; padding: 1rem; margin: 1rem 0;">
+                    <h5 style="color: #155724; margin-top: 0;">Inverse Warping</h5>
+                    <p style="color: #155724; margin-bottom: 0.5rem;">Instead of forward warping (which can create holes), we use inverse warping. For each pixel $(x', y')$ in the output image, we find the corresponding location $(x, y)$ in the source image:</p>
+                    <div class="math-formula" style="margin: 0.5rem 0;">
+                        $$\begin{bmatrix} x \\ y \\ 1 \end{bmatrix} = \mathbf{H}^{-1} \begin{bmatrix} x' \\ y' \\ 1 \end{bmatrix}$$
+                    </div>
+                    <p style="color: #155724; margin-bottom: 0.5rem;">We then sample the source image at $(x, y)$ using interpolation (nearest neighbor or bilinear) and place that value at $(x', y')$ in the output image. This ensures every output pixel gets a value without holes.</p>
+                </div>
+
+                <p>Besides using inverse warping for image mosaics, we can also use it to rectify images since we can use the homography matrix to warp the image to a flat 2D projected rectangle.</p>
+                
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="code/final_output/skull_points.png" alt="Point Correspondances" class="clickable-image" style="max-width: 280px;">
+                        <div class="image-caption">Unrectified Skull Point Correspondences</div>
+                    </div>
+                </div>
+
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/final_output/skull_nearest_rectified.jpg" alt="Rectified Image (Nearest Neighbor Interpolation)" class="clickable-image" style="max-width: 280px;">
+                        <div class="image-caption">Rectified Image (Nearest Neighbor Interpolation)</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/final_output/skull_bilinear_rectified.jpg" alt="Rectified Image (Bilinear Interpolation)" class="clickable-image" style="max-width: 280px;">
+                        <div class="image-caption">Rectified Image (Bilinear Interpolation)</div>
+                    </div>
+                </div>
+
+                <h3>Interpolation Tradeoffs</h3>
+                <p><strong>Tradeoffs and Comparisons:</strong> Both images appear very similarly across both interpolation methods, however bilinear interpolation is more computationally expesnive resulting in the time it took to generate the image being longer than the nearest neighbor interpolation.</p>
+                <p>We can visualize more examples of rectification and interpolation below (Recognize any albums?)</p>
+                <div class="rectification-row">
+                    <div class="image-container">
+                        <img src="code/final_output/albums_points.png" alt="Point Correspondances" class="clickable-image correspondence-img">
+                        <div class="image-caption">Point Correspondances</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/final_output/albums_bilinear_rectified.jpg" alt="Rectified Image (Bilinear Interpolation)" class="clickable-image">
+                        <div class="image-caption">Rectified Image (Bilinear Interpolation)</div>
+                    </div>
+                </div>
+
+                <div class="rectification-row">
+                    <div class="image-container">
+                        <img src="code/final_output/oraple_points.png" alt="Point Correspondances" class="clickable-image correspondence-img">
+                        <div class="image-caption">Point Correspondances</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/final_output/oraple_rectified.jpg" alt="Rectified Image (Bilinear Interpolation)" class="clickable-image">
+                        <div class="image-caption">Rectified Image (Bilinear Interpolation)</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="a4">
+                <h2>Blend Images into a Mosaic</h2>
+                <p>Now for the main event. Using homographies, inverse warping, and interpolation, we can blend our images into beautiful mosaics. To do this, we can learn each homography matrix between an image and a reference image and then use the inverse warping to warp the image to the reference image, apply that homography matrix to each image, then use weighted blending to blend together the images into a single mosaic.</p>
+                <h3>Blending Masks</h3>
+                <p>Below are the masks used for weighted averaging to reduce edge artifacts in the final mosaics. These were generated with <code>scipy.ndimage.distance_transform_edt</code> and allow us to blend
+                    smooth gradients between the images for one final result. Here we can visualize the first source image blended with the center reference image for the park set.
+                </p>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="code/final_output/masks/park_source_mask_blended.png" alt="Park Source Mask Blended" class="clickable-image">
+                        <div class="image-caption">park_source_mask_blended</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/final_output/masks/park_reference_mask_blended.png" alt="Park Reference Mask Blended" class="clickable-image">
+                        <div class="image-caption">park_reference_mask_blended</div>
+                    </div>
+                </div>
+                <p></p>
+                <p>Using these blending masks and everything we learned so far, we can finally visualize our final mosaics! Pay attention to any edge artifacts or blurring especially in the Berkeley Mosaic. These will be reduced when we implement feature detection and autostitching in the next section.</p>
+
+
+                <h3>Park Mosaic</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/data/images/park_1.jpeg" alt="Park 1 Source" class="clickable-image">
+                        <div class="image-caption">Source: park_1</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/park_2.jpeg" alt="Park 2 Source" class="clickable-image">
+                        <div class="image-caption">Source: park_2</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/park_3.jpeg" alt="Park 3 Source" class="clickable-image">
+                        <div class="image-caption">Source: park_3</div>
+                    </div>
+                </div>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="code/final_output/park_mosaic.jpg" alt="Final Park Mosaic" class="clickable-image" style="max-width: 900px;">
+                        <div class="image-caption">park_mosaic (weighted blending)</div>
+                    </div>
+                </div>
+
+                <h3>Stairs Mosaic</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/data/images/stairs_1.jpeg" alt="Stairs 1 Source" class="clickable-image">
+                        <div class="image-caption">Source: stairs_1</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/stairs_2.jpeg" alt="Stairs 2 Source" class="clickable-image">
+                        <div class="image-caption">Source: stairs_2</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/stairs_3.jpeg" alt="Stairs 3 Source" class="clickable-image">
+                        <div class="image-caption">Source: stairs_3</div>
+                    </div>
+                </div>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="code/final_output/stairs_mosaic.jpg" alt="Final Stairs Mosaic" class="clickable-image" style="max-width: 900px;">
+                        <div class="image-caption">stairs_mosaic (weighted blending)</div>
+                    </div>
+                </div>
+
+                <h3>Berkeley Mosaic</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/data/images/berkeley_3.jpeg" alt="Berkeley 1 Source" class="clickable-image">
+                        <div class="image-caption">Source: berkeley_1</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/berkeley_4.jpeg" alt="Berkeley 2 Source" class="clickable-image">
+                        <div class="image-caption">Source: berkeley_2</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/data/images/berkeley_5.jpeg" alt="Berkeley 3 Source" class="clickable-image">
+                        <div class="image-caption">Source: berkeley_3</div>
+                    </div>
+                </div>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="code/final_output/berkeley_mosaic.jpg" alt="Final Berkeley Mosaic" class="clickable-image" style="max-width: 900px;">
+                        <div class="image-caption">berkeley_mosaic (weighted blending)</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="b1">
+                <p>We saw how we can create image mosaics using manual correspondances between images. However, this is not always practical and is prone to errors as we saw above. For this next part of the project, we will implement methods to automatically detect features in images and autostitch our images together.</p>
+                
+                <p>The following parts of this project follows the methodology described in <a href="https://ieeexplore.ieee.org/document/1467310" target="_blank" style="color: blue; text-decoration: none; font-weight: 500;"><em>"Multi-Image Matching using Multi-Scale Oriented Patches"</em> by Brown et al.</a> The paper presents a comprehensive approach to automatic image stitching that includes Harris corner detection, adaptive non-maximal suppression, feature descriptor extraction, and robust matching techniques. Note that we do not implement the full framework (such as using wavelet transforms) but nonoftheless the core framework provides the foundation for our automatic mosaicing system.</p>
+                
+                <h2>Harris Corner Detection</h2>
+                <p>The Harris corner detector identifies points of interest in images by analyzing local intensity changes. These corners are characterized by significant intensity variations in multiple directions, making them robust features for image matching.</p>
+
+                <p>While Harris corner detection is a good starting point, even with a slight bit of filtering it produces a great deal of corners. We can see the effecg of basic Harris corner detection on the first image of the park scene below.</p>
+                
+                <h3>Basic Harris Corner Detection</h3>
+                <div class="image-row">
+                    <div class="image-container">
+                        <img src="code/final_output/park_1_harris_corners.png" alt="Harris Corners on Park Image" class="clickable-image" style="max-width: 800px;">
+                        <div class="image-caption">park_1_harris_corners - Basic Harris corner detection with filtering</div>
+                    </div>
+                </div>
+
+                <h3>Adaptive Non-Maximal Suppression (ANMS)</h3>
+                <p>Lets work on optimizing the corners we select. ANMS reduces the number of detected corners while ensuring they are well-distributed across the image. This prevents clustering of corners in high-texture regions and maintains spatial diversity. Below I highlight the effect of ANMS on the above image by filtering down to 250 corners versus 125 corners. Note the fact that corners stay relatively uniformly distributed across the image.</p>
+                
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/final_output/park_1_harris_suspress_250_corners.png" alt="ANMS Suppression with 250 corners" class="clickable-image">
+                        <div class="image-caption">park_1_harris_suspress_250_corners - ANMS with 250 corners</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/final_output/park_1_harris_suspress_125_corners.png" alt="ANMS Suppression with 125 corners" class="clickable-image">
+                        <div class="image-caption">park_1_harris_suspress_125_corners - ANMS with 125 corners</div>
+                    </div>
+                </div>
+                <p></p>
+                <p>We have successfully found a way to automatically detect a good set of corners for our images. We now need to work on implementing a method to match these corners between images.</p>
+            </section>
+
+            <section class="section" id="b2">
+                <h2>Feature Descriptor Extraction</h2>
+                <p>Feature descriptors capture the local appearance around each detected corner point. With good feature descriptors, it will become significantly easier to match correspondances between images. For this project, 8x8 patches are extracted from a larger 40x40 window, which are then bias/gain-normalized to create robust, illumination-invariant descriptors. Here are some example feature descriptors extracted from the first image of the park scene and the first image of the Berkeley scene.</p>
+
+                <p>The first row is the original 40x40 patch, the second row is the blurred 40x40 patch, and the third row is the 8x8 descriptor patch.</p>
+                
+                <h3>Extracted Feature Descriptors</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/final_output/park_1_500_descriptors.png" alt="Park Feature Descriptors" class="clickable-image">
+                        <div class="image-caption">park_1_500_descriptors - Normalized 8x8 feature descriptors</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/final_output/berkeley_1_500_descriptors.png" alt="Berkeley Feature Descriptors" class="clickable-image">
+                        <div class="image-caption">berkeley_1_500_descriptors - Normalized 8x8 feature descriptors</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="b3">
+                <h2>Feature Matching</h2>
+                <p>With good feature descriptors, we can now match correspodances between images. To accomplish this we use the ratio test (Lowe's method) to filter matches based on the ratio between the first and second nearest neighbors, which helps eliminate ambiguous matches.</p>
+
+                <div class="highlight" style="background-color: #d4edda; border-left: 4px solid #28a745; padding: 1rem; margin: 1rem 0;">
+                    <h5 style="color: #155724; margin-top: 0;">Lowe's Ratio Test</h5>
+                    <p style="color: #155724; margin-bottom: 0.5rem;">For each descriptor in image 1, we find its two nearest neighbors in image 2 using Euclidean distance:</p>
+                    <div class="math-formula" style="margin: 0.5rem 0;">
+                        $$d_1 = \min_{j} ||\mathbf{d}_1^{(i)} - \mathbf{d}_2^{(j)}||_2, \quad d_2 = \min_{j \neq j_1} ||\mathbf{d}_1^{(i)} - \mathbf{d}_2^{(j)}||_2$$
+                    </div>
+                    <p style="color: #155724; margin-bottom: 0.5rem;">where $\mathbf{d}_1^{(i)}$ is the $i$-th descriptor in image 1, and $j_1$ is the index of the first nearest neighbor.</p>
+                    <p style="color: #155724; margin-bottom: 0.5rem;">The ratio test accepts a match if:</p>
+                    <div class="math-formula" style="margin: 0.5rem 0;">
+                        $$\frac{d_1}{d_2} < \tau$$
+                    </div>
+                    <p style="color: #155724; margin-bottom: 0;">where $\tau$ is typically 0.7. This ensures the best match is significantly better than the second-best match, reducing false correspondences.</p>
+                </div>
+                <p>Using Lowe's ratio test, we can now visualize feature matches between a pair of images. Below are the feature matches between the first image of the park scene and the second image of the park scene, and the first image of the Berkeley scene and the second image of the Berkeley scene. Note that 
+                    there are a significant number of outliers in the Berkeley image due to the repetitive architectural features like windows and building facades that create many similar-looking corners. We can reduce these using RANSAC in the next step.
+                </p>
+                
+                <h3>Feature Correspondences</h3>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/final_output/park_1_to_2_500_normal_500_correspondances.jpeg" alt="Park Feature Matches" class="clickable-image">
+                        <div class="image-caption">park_1_to_2_500_normal - Clean feature matches with minimal outliers</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/final_output/berkeley_1_to_2_500_normal_500_correspondances.jpeg" alt="Berkeley Feature Matches" class="clickable-image">
+                        <div class="image-caption">berkeley_1_to_2_500_normal - Many outliers due to repetitive structures (windows, buildings)</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="b4">
+                <h2>RANSAC for Robust Homography</h2>
+                <p>We have good feature dsecriptors, we have found a way to match them, but now there are too many outliers that will hurt our homography estimation. By using RANSAC (Random Sample Consensus) we can robustly estimate homographies by iteratively selecting random subsets of correspondences and finding the transformation that best fits the majority of points. This effectively filters out outlier matches and produces more accurate mosaics.</p>
+                
+                <h3>Manual vs Automatic Mosaics</h3>
+                <p>Below are comparisons between manually stitched mosaics (using hand-selected correspondences) and automatically stitched mosaics (using RANSAC-filtered correspondences). The automatic approach demonstrates the robustness of the feature matching and RANSAC pipeline.</p>
+                
+                <h4>Park Mosaic</h4>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/final_output/park_mosaic.jpg" alt="Park Manual Mosaic" class="clickable-image" style="max-width: 600px;">
+                        <div class="image-caption">Manual Mosaic - Hand-selected correspondences</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/final_output/park_automatic_ransac_mosaic.jpg" alt="Park Automatic RANSAC Mosaic" class="clickable-image" style="max-width: 600px;">
+                        <div class="image-caption">Automatic RANSAC Mosaic - Feature matching + RANSAC</div>
+                    </div>
+                </div>
+
+                <h4>Stairs Mosaic</h4>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/final_output/stairs_mosaic.jpg" alt="Stairs Manual Mosaic" class="clickable-image" style="max-width: 600px;">
+                        <div class="image-caption">Manual Mosaic - Hand-selected correspondences</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/final_output/stairs_automatic_ransac_mosaic.jpg" alt="Stairs Automatic RANSAC Mosaic" class="clickable-image" style="max-width: 600px;">
+                        <div class="image-caption">Automatic RANSAC Mosaic - Feature matching + RANSAC</div>
+                    </div>
+                </div>
+
+                <h4>Berkeley Mosaic</h4>
+                <div class="image-row no-wrap">
+                    <div class="image-container">
+                        <img src="code/final_output/berkeley_mosaic.jpg" alt="Berkeley Manual Mosaic" class="clickable-image" style="max-width: 600px;">
+                        <div class="image-caption">Manual Mosaic - Hand-selected correspondences</div>
+                    </div>
+                    <div class="image-container">
+                        <img src="code/final_output/berkeley_automatic_ransac_mosaic.jpg" alt="Berkeley Automatic RANSAC Mosaic" class="clickable-image" style="max-width: 600px;">
+                        <div class="image-caption">Automatic RANSAC Mosaic - Feature matching + RANSAC</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 CS180 Portfolio - Project 3</p>
+        </div>
+    </footer>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal">
+        <span class="close">&times;</span>
+        <img class="modal-content" id="modalImage">
+        <div id="modalCaption" class="modal-caption"></div>
+    </div>
+
+    <script>
+        var modal = document.getElementById("imageModal");
+        var modalImg = document.getElementById("modalImage");
+        var captionText = document.getElementById("modalCaption");
+        var span = document.getElementsByClassName("close")[0];
+
+        document.addEventListener('click', function(event) {
+            if (event.target.tagName === 'IMG' && event.target.classList.contains('clickable-image')) {
+                modal.style.display = "block";
+                modalImg.src = event.target.src;
+                captionText.innerHTML = event.target.alt;
+            }
+        });
+
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        modal.onclick = function(event) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                modal.style.display = "none";
+            }
+        });
+    </script>
+</body>
+</html>
+
+
